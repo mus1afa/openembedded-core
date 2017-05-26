@@ -6,7 +6,7 @@ import shutil
 
 import oeqa.utils.ftools as ftools
 from oeqa.selftest.case import OESelftestTestCase
-from oeqa.utils.commands import runCmd, bitbake, get_bb_vars, get_test_layer
+from oeqa.utils.commands import runCmd, bitbake, get_bb_vars
 
 
 class SStateBase(OESelftestTestCase):

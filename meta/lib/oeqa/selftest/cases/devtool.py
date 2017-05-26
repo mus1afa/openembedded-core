@@ -8,7 +8,7 @@ import fnmatch
 import oeqa.utils.ftools as ftools
 from oeqa.selftest.case import OESelftestTestCase
 from oeqa.utils.commands import runCmd, bitbake, get_bb_var, create_temp_layer
-from oeqa.utils.commands import get_bb_vars, runqemu, get_test_layer
+from oeqa.utils.commands import get_bb_vars, runqemu
 from oeqa.core.decorator.oeid import OETestID
 
 class DevtoolBase(OESelftestTestCase):
@@ -1530,7 +1530,7 @@ class DevtoolTests(DevtoolBase):
         # Ensure the recipe is where we think it should be (so that cleanup doesn't trash things)
         self.assertIn('/meta/', recipedir)
         relpth = os.path.relpath(recipedir, os.path.join(get_bb_var('COREBASE'), 'meta'))
-        appenddir = os.path.join(get_test_layer(), relpth)
+        appenddir = os.path.join(self.testlayer_path, relpth)
         self.track_for_cleanup(appenddir)
         # Try finish to the original layer
         self.add_command_to_tearDown('rm -rf %s ; cd %s ; git checkout %s' % (recipedir, os.path.dirname(recipedir), recipedir))
