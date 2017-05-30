@@ -6,10 +6,11 @@ import os
 import shutil
 import glob
 import errno
+import re
 from unittest.util import safe_repr
 
 import oeqa.utils.ftools as ftools
-from oeqa.utils.commands import runCmd, bitbake, get_bb_var
+from oeqa.utils.commands import runCmd, bitbake, get_bb_env, get_bb_var, get_bb_vars
 from oeqa.core.case import OETestCase
 
 class OESelftestTestCase(OETestCase):
@@ -201,7 +202,7 @@ to ensure accurate results.")
         if self._extra_tear_down_commands:
             failed_extra_commands = []
             for command in self._extra_tear_down_commands:
-                result = runCmd(command, ignore_status=True)
+                result = self.runCmd(command, ignore_status=True)
                 if not result.status ==  0:
                     failed_extra_commands.append(command)
             if failed_extra_commands:
@@ -317,3 +318,94 @@ to ensure accurate results.")
             msg = self._formatMessage(msg, "%s exists when it should not" % safe_repr(expr))
 
             raise self.failureException(msg)
+
+    # utils commands to run on it's on builddir
+    @classmethod 
+    def _env_own_builddir(cls, **kwargs):
+        env = None
+
+        if 'env' in kwargs:
+            env = kwargs['env']
+
+            if not 'BUILDDIR' in env:
+                env['BUILDDIR'] = cls.builddir
+            if not 'BBPATH' in env:
+                env['BBPATH'] = cls.builddir
+
+        else:
+            env = os.environ.copy()
+            env['BUILDDIR'] = cls.builddir
+            env['BBPATH'] = cls.builddir
+
+        kwargs['env'] = env
+
+        # XXX: tinfoil doesn't honor BBPATH bblayers and tinfoil test
+        # modules uses it
+        if not 'cwd' in kwargs:
+            kwargs['cwd'] = cls.builddir
+
+        # XXX: uncomment for debugging purposes
+        #kwargs['output_log'] = cls.logger
+
+        return kwargs
+
+    @classmethod
+    def runCmd(cls, *args, **kwargs):
+        kwargs = cls._env_own_builddir(**kwargs)
+        return runCmd(*args, **kwargs)
+
+    @classmethod
+    def bitbake(cls, *args, **kwargs):
+        kwargs = cls._env_own_builddir(**kwargs)
+        return bitbake(*args, **kwargs)
+
+    @classmethod
+    def get_bb_env(cls, target=None, postconfig=None):
+        if target:
+            return cls.bitbake("-e %s" % target, postconfig=postconfig).output
+        else:
+            return cls.bitbake("-e", postconfig=postconfig).output
+
+    @classmethod
+    def get_bb_vars(cls, variables=None, target=None, postconfig=None):
+        """Get values of multiple bitbake variables"""
+        bbenv = cls.get_bb_env(target, postconfig=postconfig)
+
+        if variables is not None:
+            variables = variables.copy()
+        var_re = re.compile(r'^(export )?(?P<var>\w+(_.*)?)="(?P<value>.*)"$')
+        unset_re = re.compile(r'^unset (?P<var>\w+)$')
+        lastline = None
+        values = {}
+        for line in bbenv.splitlines():
+            match = var_re.match(line)
+            val = None
+            if match:
+                val = match.group('value')
+            else:
+                match = unset_re.match(line)
+                if match:
+                    # Handle [unexport] variables
+                    if lastline.startswith('#   "'):
+                        val = lastline.split('"')[1]
+            if val:
+                var = match.group('var')
+                if variables is None:
+                    values[var] = val
+                else:
+                    if var in variables:
+                        values[var] = val
+                        variables.remove(var)
+                    # Stop after all required variables have been found
+                    if not variables:
+                        break
+            lastline = line
+        if variables:
+            # Fill in missing values
+            for var in variables:
+                values[var] = None
+        return values
+    
+    @classmethod 
+    def get_bb_var(cls, var, target=None, postconfig=None):
+        return cls.get_bb_vars([var], target, postconfig)[var]
