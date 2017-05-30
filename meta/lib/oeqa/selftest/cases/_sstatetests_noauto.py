@@ -11,7 +11,6 @@ class RebuildFromSState(SStateBase):
     @classmethod
     def setUpClass(self):
         super(RebuildFromSState, self).setUpClass()
-        self.builddir = os.path.join(os.environ.get('BUILDDIR'))
 
     def get_dep_targets(self, primary_targets):
         found_targets = []
@@ -24,16 +23,16 @@ class RebuildFromSState(SStateBase):
         os.mkdir(builddir)
         self.track_for_cleanup(builddir)
         os.mkdir(os.path.join(builddir, 'conf'))
-        shutil.copyfile(os.path.join(os.environ.get('BUILDDIR'), 'conf/local.conf'), os.path.join(builddir, 'conf/local.conf'))
+        shutil.copyfile(self.localconf_path, os.path.join(builddir, 'conf/local.conf'))
         config = {}
         config['default_sstate_dir'] = "SSTATE_DIR ?= \"${TOPDIR}/sstate-cache\""
         config['null_sstate_mirrors'] = "SSTATE_MIRRORS = \"\""
         config['default_tmp_dir'] = "TMPDIR = \"${TOPDIR}/tmp\""
         for key in config:
             ftools.append_file(os.path.join(builddir, 'conf/selftest.inc'), config[key])
-        shutil.copyfile(os.path.join(os.environ.get('BUILDDIR'), 'conf/bblayers.conf'), os.path.join(builddir, 'conf/bblayers.conf'))
+        shutil.copyfile(self.local_bblayers_path, os.path.join(builddir, 'conf/bblayers.conf'))
         try:
-            shutil.copyfile(os.path.join(os.environ.get('BUILDDIR'), 'conf/auto.conf'), os.path.join(builddir, 'conf/auto.conf'))
+            shutil.copyfile(self.autoconf_path, os.path.join(builddir, 'conf/auto.conf'))
         except:
             pass
 

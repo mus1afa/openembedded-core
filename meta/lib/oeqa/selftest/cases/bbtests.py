@@ -22,8 +22,8 @@ class BitbakeTests(OESelftestTestCase):
     @OETestID(790)
     def test_run_bitbake_from_dir_2(self):
         my_env = os.environ.copy()
-        my_env['BBPATH'] = my_env['BUILDDIR']
-        os.chdir(os.path.dirname(os.environ['BUILDDIR']))
+        my_env['BBPATH'] = self.builddir
+        os.chdir(os.path.dirname(self.builddir))
         self.assertEqual(bitbake('-e', env=my_env).status, 0, msg = "bitbake couldn't run from builddir")
 
     @OETestID(806)

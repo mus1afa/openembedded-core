@@ -49,7 +49,7 @@ class oeSDKExtSelfTest(OESelftestTestCase):
 
     @staticmethod
     def update_configuration(cls, image, tmpdir_eSDKQA, env_eSDK, ext_sdk_path):
-        sstate_dir = os.path.join(os.environ['BUILDDIR'], 'sstate-cache')
+        sstate_dir = os.path.join(cls.builddir, 'sstate-cache')
 
         oeSDKExtSelfTest.generate_eSDK(cls.image)
 
