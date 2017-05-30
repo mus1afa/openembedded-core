@@ -1,11 +1,13 @@
 import os
 
 from oeqa.selftest.case import OESelftestTestCase
-from oeqa.utils.commands import runCmd, bitbake, get_bb_var
 import oeqa.utils.ftools as ftools
 from oeqa.core.decorator.oeid import OETestID
 
 class LayerAppendTests(OESelftestTestCase):
+    _use_own_builddir = True
+    _main_thread = False
+
     layerconf = """
 # We have a conf and classes directory, append to BBPATH
 BBPATH .= ":${LAYERDIR}"
@@ -51,10 +53,8 @@ SRC_URI_append += "file://appendtest.txt"
 
     @OETestID(1196)
     def test_layer_appends(self):
-        corebase = get_bb_var("COREBASE")
-
         for l in ["0", "1", "2"]:
-            layer = os.path.join(corebase, "meta-layertest" + l)
+            layer = os.path.join(self.builddir, "meta-layertest" + l)
             self.assertFalse(os.path.exists(layer))
             os.mkdir(layer)
             os.mkdir(layer + "/conf")
@@ -78,18 +78,18 @@ SRC_URI_append += "file://appendtest.txt"
                     f.write("Layer 2 test")
             self.track_for_cleanup(layer)
 
-        self.layerappend = "BBLAYERS += \"{0}/meta-layertest0 {0}/meta-layertest1 {0}/meta-layertest2\"".format(corebase)
+        self.layerappend = "BBLAYERS += \"{0}/meta-layertest0 {0}/meta-layertest1 {0}/meta-layertest2\"".format(self.builddir)
         ftools.append_file(self.builddir + "/conf/bblayers.conf", self.layerappend)
-        stagingdir = get_bb_var("SYSROOT_DESTDIR", "layerappendtest")
-        bitbake("layerappendtest")
+        stagingdir = self.get_bb_var("SYSROOT_DESTDIR", "layerappendtest")
+        self.bitbake("layerappendtest")
         data = ftools.read_file(stagingdir + "/appendtest.txt")
         self.assertEqual(data, "Layer 2 test")
-        os.remove(corebase + "/meta-layertest2/recipes-test/layerappendtest/appendtest.txt")
-        bitbake("layerappendtest")
+        os.remove(self.builddir + "/meta-layertest2/recipes-test/layerappendtest/appendtest.txt")
+        self.bitbake("layerappendtest")
         data = ftools.read_file(stagingdir + "/appendtest.txt")
         self.assertEqual(data, "Layer 1 test")
-        with open(corebase + "/meta-layertest2/recipes-test/layerappendtest/appendtest.txt", "w") as f:
+        with open(self.builddir + "/meta-layertest2/recipes-test/layerappendtest/appendtest.txt", "w") as f:
             f.write("Layer 2 test")
-        bitbake("layerappendtest")
+        self.bitbake("layerappendtest")
         data = ftools.read_file(stagingdir + "/appendtest.txt")
         self.assertEqual(data, "Layer 2 test")

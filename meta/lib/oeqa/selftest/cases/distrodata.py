@@ -1,9 +1,10 @@
 from oeqa.selftest.case import OESelftestTestCase
-from oeqa.utils.commands import runCmd, bitbake, get_bb_var, get_bb_vars
 from oeqa.utils.decorators import testcase
 from oeqa.utils.ftools import write_file
 
 class Distrodata(OESelftestTestCase):
+    _use_own_builddir = True
+    _main_thread = False
 
     @classmethod
     def setUpClass(cls):
@@ -21,8 +22,8 @@ class Distrodata(OESelftestTestCase):
         feature += 'LICENSE_FLAGS_WHITELIST += " commercial"\n'
 
         self.write_config(feature)
-        bitbake('-c checkpkg world')
-        checkpkg_result = open(os.path.join(get_bb_var("LOG_DIR"), "checkpkg.csv")).readlines()[1:]
+        self.bitbake('-c checkpkg world')
+        checkpkg_result = open(os.path.join(self.get_bb_var("LOG_DIR"), "checkpkg.csv")).readlines()[1:]
         exceptions = [exc.strip() for exc in open(self.exceptions_path).readlines()]
         failed_upstream_checks = [pkg_data[0] for pkg_data in [pkg_line.split('\t') for pkg_line in checkpkg_result] if pkg_data[11] == '']
         regressed_failures = set(failed_upstream_checks) - set(exceptions)

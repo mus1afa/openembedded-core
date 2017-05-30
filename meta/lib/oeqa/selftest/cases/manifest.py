@@ -1,7 +1,6 @@
 import os
 
 from oeqa.selftest.case import OESelftestTestCase
-from oeqa.utils.commands import get_bb_var, get_bb_vars, bitbake
 from oeqa.core.decorator.oeid import OETestID
 
 class ManifestEntry:
@@ -12,6 +11,8 @@ class ManifestEntry:
 
 class VerifyManifest(OESelftestTestCase):
     '''Tests for the manifest files and contents of an image'''
+    _use_own_builddir = True
+    _main_thread = False
 
     @classmethod
     def check_manifest_entries(self, manifest, path):
@@ -37,7 +38,7 @@ class VerifyManifest(OESelftestTestCase):
     @classmethod
     def get_dir_from_bb_var(self, bb_var, target = None):
         target == self.buildtarget if target == None else target
-        directory = get_bb_var(bb_var, target);
+        directory = self.get_bb_var(bb_var, target);
         if not directory or not os.path.isdir(directory):
             self.logger.debug("{}: {} points to {} when target = {}"\
                     .format(self.classname, bb_var, directory, target))
@@ -53,7 +54,7 @@ class VerifyManifest(OESelftestTestCase):
 
         self.logger.info("{}: doing bitbake {} as a prerequisite of the test"\
                 .format(self.classname, self.buildtarget))
-        if bitbake(self.buildtarget).status:
+        if self.bitbake(self.buildtarget).status:
             self.logger.debug("{} Failed to setup {}"\
                     .format(self.classname, self.buildtarget))
             self.skipTest("{}: Cannot setup testing scenario"\
@@ -69,7 +70,7 @@ class VerifyManifest(OESelftestTestCase):
         bbargs = sdktask + ' ' + self.buildtarget
         self.logger.debug("{}: doing bitbake {} as a prerequisite of the test"\
                 .format(self.classname, bbargs))
-        if bitbake(bbargs).status:
+        if self.bitbake(bbargs).status:
             self.logger.debug("{} Failed to bitbake {}"\
                     .format(self.classname, bbargs))
             self.skipTest("{}: Cannot setup testing scenario"\
@@ -84,7 +85,7 @@ class VerifyManifest(OESelftestTestCase):
         try:
             mdir = self.get_dir_from_bb_var('SDK_DEPLOY', self.buildtarget)
             for k in d_target.keys():
-                bb_vars = get_bb_vars(['SDK_NAME', 'SDK_VERSION'], self.buildtarget)
+                bb_vars = self.get_bb_vars(['SDK_NAME', 'SDK_VERSION'], self.buildtarget)
                 mfilename[k] = "{}-toolchain-{}.{}.manifest".format(
                         bb_vars['SDK_NAME'],
                         bb_vars['SDK_VERSION'],
@@ -134,7 +135,7 @@ class VerifyManifest(OESelftestTestCase):
         try:
             mdir = self.get_dir_from_bb_var('DEPLOY_DIR_IMAGE',
                                                 self.buildtarget)
-            mfilename = get_bb_var("IMAGE_LINK_NAME", self.buildtarget)\
+            mfilename = self.get_bb_var("IMAGE_LINK_NAME", self.buildtarget)\
                     + ".manifest"
             mpath = os.path.join(mdir, mfilename)
             if not os.path.isfile(mpath): raise IOError

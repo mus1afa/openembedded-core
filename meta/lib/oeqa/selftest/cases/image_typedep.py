@@ -1,10 +1,11 @@
 import os
 
 from oeqa.selftest.case import OESelftestTestCase
-from oeqa.utils.commands import bitbake
 from oeqa.core.decorator.oeid import OETestID
 
 class ImageTypeDepTests(OESelftestTestCase):
+    _use_own_builddir = True
+    _main_thread = False
 
     # Verify that when specifying a IMAGE_TYPEDEP_ of the form "foo.bar" that
     # the conversion type bar gets added as a dep as well
@@ -27,8 +28,9 @@ inherit image
 """)
         # First get the dependency that should exist for bz2, it will look
         # like CONVERSION_DEPENDS_bz2="somedep"
-        result = bitbake('-e emptytest')
+        result = self.bitbake('-e emptytest')
 
+        dep = ''
         for line in result.output.split('\n'):
             if line.startswith('CONVERSION_DEPENDS_bz2'):
                 dep = line.split('=')[1].strip('"')
@@ -36,7 +38,7 @@ inherit image
 
         # Now get the dependency task list and check for the expected task
         # dependency
-        bitbake('-g emptytest')
+        self.bitbake('-g emptytest')
 
         taskdependsfile = os.path.join(self.builddir, 'task-depends.dot')
         dep =  dep + ".do_populate_sysroot"

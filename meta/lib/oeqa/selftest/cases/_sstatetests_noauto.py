@@ -2,19 +2,15 @@ import os
 import shutil
 
 import oeqa.utils.ftools as ftools
-from oeqa.utils.commands import runCmd, bitbake, get_bb_var
 from oeqa.selftest.cases.sstate import SStateBase
 
-
 class RebuildFromSState(SStateBase):
-
-    @classmethod
-    def setUpClass(self):
-        super(RebuildFromSState, self).setUpClass()
+    _use_own_builddir = True
+    _main_thread = False
 
     def get_dep_targets(self, primary_targets):
         found_targets = []
-        bitbake("-g " + ' '.join(map(str, primary_targets)))
+        self.bitbake("-g " + ' '.join(map(str, primary_targets)))
         with open(os.path.join(self.builddir, 'pn-buildlist'), 'r') as pnfile:
             found_targets = pnfile.read().splitlines()
         return found_targets
@@ -59,7 +55,7 @@ class RebuildFromSState(SStateBase):
             rebuild_targets = primary_targets
 
         self.configure_builddir(buildA)
-        runCmd((". %s/oe-init-build-env %s && " % (get_bb_var('COREBASE'), buildA)) + 'bitbake  ' + ' '.join(map(str, primary_targets)), shell=True, executable='/bin/bash')
+        self.runCmd((". %s/oe-init-build-env %s && " % (self.get_bb_var('COREBASE'), buildA)) + 'bitbake  ' + ' '.join(map(str, primary_targets)), shell=True, executable='/bin/bash')
         self.hardlink_tree(os.path.join(buildA, 'sstate-cache'), os.path.join(self.builddir, 'sstate-cache-buildA'))
         shutil.rmtree(buildA)
 
@@ -69,13 +65,13 @@ class RebuildFromSState(SStateBase):
             self.configure_builddir(buildB)
             self.hardlink_tree(os.path.join(self.builddir, 'sstate-cache-buildA'), os.path.join(buildB, 'sstate-cache'))
 
-            result_cleansstate = runCmd((". %s/oe-init-build-env %s && " % (get_bb_var('COREBASE'), buildB)) + 'bitbake -ccleansstate ' + target, ignore_status=True, shell=True, executable='/bin/bash')
+            result_cleansstate = self.runCmd((". %s/oe-init-build-env %s && " % (self.get_bb_var('COREBASE'), buildB)) + 'bitbake -ccleansstate ' + target, ignore_status=True, shell=True, executable='/bin/bash')
             if not result_cleansstate.status == 0:
                 failed_cleansstate.append(target)
                 shutil.rmtree(buildB)
                 continue
 
-            result_build = runCmd((". %s/oe-init-build-env %s && " % (get_bb_var('COREBASE'), buildB)) + 'bitbake ' + target, ignore_status=True, shell=True, executable='/bin/bash')
+            result_build = self.runCmd((". %s/oe-init-build-env %s && " % (self.get_bb_var('COREBASE'), buildB)) + 'bitbake ' + target, ignore_status=True, shell=True, executable='/bin/bash')
             if not result_build.status == 0:
                 failed_rebuild.append(target)
 

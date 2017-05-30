@@ -1,10 +1,12 @@
 from oeqa.selftest.case import OESelftestTestCase
 from oeqa.core.decorator.oeid import OETestID
-from oeqa.utils.commands import bitbake, get_bb_vars
 import subprocess, os
 import oe.path
 
 class VersionOrdering(OESelftestTestCase):
+    _use_own_builddir = True
+    _main_thread = False
+
     # version1, version2, sort order
     tests = (
         ("1.0", "1.0", 0),
@@ -20,11 +22,11 @@ class VersionOrdering(OESelftestTestCase):
         super().setUpClass()
 
         # Build the tools we need and populate a sysroot
-        bitbake("dpkg-native opkg-native rpm-native python3-native")
-        bitbake("build-sysroots -c build_native_sysroot")
+        cls.bitbake("dpkg-native opkg-native rpm-native python3-native")
+        cls.bitbake("build-sysroots -c build_native_sysroot")
 
         # Get the paths so we can point into the sysroot correctly
-        vars = get_bb_vars(["STAGING_DIR", "BUILD_ARCH", "bindir_native", "libdir_native"])
+        vars = cls.get_bb_vars(["STAGING_DIR", "BUILD_ARCH", "bindir_native", "libdir_native"])
         cls.staging = oe.path.join(vars["STAGING_DIR"], vars["BUILD_ARCH"])
         cls.bindir = oe.path.join(cls.staging, vars["bindir_native"])
         cls.libdir = oe.path.join(cls.staging, vars["libdir_native"])

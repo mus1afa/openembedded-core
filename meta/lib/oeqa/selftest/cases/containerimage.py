@@ -1,7 +1,6 @@
 import os
 
 from oeqa.selftest.case import OESelftestTestCase
-from oeqa.utils.commands import bitbake, get_bb_vars, runCmd
 from oeqa.core.decorator.oeid import OETestID
 
 # This test builds an image with using the "container" IMAGE_FSTYPE, and
@@ -18,6 +17,8 @@ from oeqa.core.decorator.oeid import OETestID
 # default other than what is in ROOTFS_BOOTSTRAP_INSTALL.
 #
 class ContainerImageTests(OESelftestTestCase):
+    _use_own_builddir = True
+    _main_thread = False
 
     # Verify that when specifying a IMAGE_TYPEDEP_ of the form "foo.bar" that
     # the conversion type bar gets added as a dep as well
@@ -41,7 +42,7 @@ PACKAGE_CLASSES = "package_ipk"
 IMAGE_FEATURES = ""
 """)
 
-        bbvars = get_bb_vars(['bindir', 'sysconfdir', 'localstatedir',
+        bbvars = self.get_bb_vars(['bindir', 'sysconfdir', 'localstatedir',
                               'DEPLOY_DIR_IMAGE', 'IMAGE_LINK_NAME'],
                               target='container-test-image')
         expected_files = [
@@ -75,11 +76,11 @@ IMAGE_FEATURES = ""
         expected_files = sorted(expected_files)
 
         # Build the image of course
-        bitbake('container-test-image')
+        self.bitbake('container-test-image')
 
         image = os.path.join(bbvars['DEPLOY_DIR_IMAGE'],
                              bbvars['IMAGE_LINK_NAME'] + '.tar.bz2')
 
         # Ensure the files in the image are what we expect
-        result = runCmd("tar tf {} | sort".format(image), shell=True)
+        result = self.runCmd("tar tf {} | sort".format(image), shell=True)
         self.assertEqual(result.output.split('\n'), expected_files)

@@ -6,7 +6,6 @@ import shutil
 
 import oeqa.utils.ftools as ftools
 from oeqa.selftest.case import OESelftestTestCase
-from oeqa.utils.commands import runCmd, bitbake, get_bb_vars
 
 
 class SStateBase(OESelftestTestCase):
@@ -16,7 +15,7 @@ class SStateBase(OESelftestTestCase):
         self.temp_sstate_location = None
         needed_vars = ['SSTATE_DIR', 'NATIVELSBSTRING', 'TCLIBC', 'TUNE_ARCH',
                        'TOPDIR', 'TARGET_VENDOR', 'TARGET_OS']
-        bb_vars = get_bb_vars(needed_vars)
+        bb_vars = self.get_bb_vars(needed_vars)
         self.sstate_path = bb_vars['SSTATE_DIR']
         self.hostdistro = bb_vars['NATIVELSBSTRING']
         self.tclibc = bb_vars['TCLIBC']
@@ -35,7 +34,7 @@ class SStateBase(OESelftestTestCase):
             config_temp_sstate = "SSTATE_DIR = \"%s\"" % temp_sstate_path
             self.append_config(config_temp_sstate)
             self.track_for_cleanup(temp_sstate_path)
-        bb_vars = get_bb_vars(['SSTATE_DIR', 'NATIVELSBSTRING'])
+        bb_vars = self.get_bb_vars(['SSTATE_DIR', 'NATIVELSBSTRING'])
         self.sstate_path = bb_vars['SSTATE_DIR']
         self.hostdistro = bb_vars['NATIVELSBSTRING']
         self.distro_specific_sstate = os.path.join(self.sstate_path, self.hostdistro)

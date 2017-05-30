@@ -1,10 +1,11 @@
 import os
 import glob
-from oeqa.utils.commands import bitbake, get_bb_vars
 from oeqa.selftest.case import OESelftestTestCase
 from oeqa.core.decorator.oeid import OETestID
 
 class Archiver(OESelftestTestCase):
+    _use_own_builddir = True
+    _main_thread = False
 
     @OETestID(1345)
     def test_archiver_allows_to_filter_on_recipe_name(self):
@@ -26,10 +27,10 @@ class Archiver(OESelftestTestCase):
         features += 'COPYLEFT_PN_EXCLUDE = "%s"\n' % exclude_recipe
         self.write_config(features)
 
-        bitbake('-c clean %s %s' % (include_recipe, exclude_recipe))
-        bitbake("-c deploy_archives %s %s" % (include_recipe, exclude_recipe))
+        self.bitbake('-c clean %s %s' % (include_recipe, exclude_recipe))
+        self.bitbake("-c deploy_archives %s %s" % (include_recipe, exclude_recipe))
 
-        bb_vars = get_bb_vars(['DEPLOY_DIR_SRC', 'TARGET_SYS'])
+        bb_vars = self.get_bb_vars(['DEPLOY_DIR_SRC', 'TARGET_SYS'])
         src_path = os.path.join(bb_vars['DEPLOY_DIR_SRC'], bb_vars['TARGET_SYS'])
 
         # Check that include_recipe was included
@@ -58,10 +59,10 @@ class Archiver(OESelftestTestCase):
         features += 'COPYLEFT_RECIPE_TYPES = "target"\n'
         self.write_config(features)
 
-        bitbake('-c clean %s %s' % (target_recipe, native_recipe))
-        bitbake("%s -c deploy_archives %s" % (target_recipe, native_recipe))
+        self.bitbake('-c clean %s %s' % (target_recipe, native_recipe))
+        self.bitbake("%s -c deploy_archives %s" % (target_recipe, native_recipe))
 
-        bb_vars = get_bb_vars(['DEPLOY_DIR_SRC', 'TARGET_SYS', 'BUILD_SYS'])
+        bb_vars = self.get_bb_vars(['DEPLOY_DIR_SRC', 'TARGET_SYS', 'BUILD_SYS'])
         src_path_target = os.path.join(bb_vars['DEPLOY_DIR_SRC'], bb_vars['TARGET_SYS'])
         src_path_native = os.path.join(bb_vars['DEPLOY_DIR_SRC'], bb_vars['BUILD_SYS'])
 
@@ -95,10 +96,10 @@ class Archiver(OESelftestTestCase):
         features += 'COPYLEFT_PN_EXCLUDE = "%s"\n' % target_recipes[1]
         self.write_config(features)
 
-        bitbake('-c clean %s %s' % (' '.join(target_recipes), ' '.join(native_recipes)))
-        bitbake('-c deploy_archives %s %s' % (' '.join(target_recipes), ' '.join(native_recipes)))
+        self.bitbake('-c clean %s %s' % (' '.join(target_recipes), ' '.join(native_recipes)))
+        self.bitbake('-c deploy_archives %s %s' % (' '.join(target_recipes), ' '.join(native_recipes)))
 
-        bb_vars = get_bb_vars(['DEPLOY_DIR_SRC', 'TARGET_SYS', 'BUILD_SYS'])
+        bb_vars = self.get_bb_vars(['DEPLOY_DIR_SRC', 'TARGET_SYS', 'BUILD_SYS'])
         src_path_target = os.path.join(bb_vars['DEPLOY_DIR_SRC'], bb_vars['TARGET_SYS'])
         src_path_native = os.path.join(bb_vars['DEPLOY_DIR_SRC'], bb_vars['BUILD_SYS'])
 

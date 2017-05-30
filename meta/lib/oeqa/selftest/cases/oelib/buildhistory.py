@@ -1,15 +1,18 @@
 import os
 from oeqa.selftest.case import OESelftestTestCase
 import tempfile
-from oeqa.utils.commands import get_bb_var
 from oeqa.core.decorator.oeid import OETestID
+from git import Repo
+from oe.buildhistory_analysis import blob_to_dict, compare_dict_blobs
 
 class TestBlobParsing(OESelftestTestCase):
+    _use_own_builddir = True
+    _main_thread = False
 
     def setUp(self):
         import time
         self.repo_path = tempfile.mkdtemp(prefix='selftest-buildhistory',
-            dir=get_bb_var('TOPDIR'))
+            dir=self.get_bb_var('TOPDIR'))
 
         try:
             from git import Repo

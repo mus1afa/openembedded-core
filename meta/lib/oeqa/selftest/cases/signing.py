@@ -1,5 +1,4 @@
 from oeqa.selftest.case import OESelftestTestCase
-from oeqa.utils.commands import runCmd, bitbake, get_bb_var, get_bb_vars
 import os
 import glob
 import re
@@ -8,8 +7,9 @@ import tempfile
 from oeqa.core.decorator.oeid import OETestID
 from oeqa.utils.ftools import write_file
 
-
 class Signing(OESelftestTestCase):
+    _use_own_builddir = True
+    _main_thread = False
 
     gpg_dir = ""
     pub_key_path = ""
@@ -28,7 +28,7 @@ class Signing(OESelftestTestCase):
         cls.pub_key_path = os.path.join(cls.testlayer_path, 'files', 'signing', "key.pub")
         cls.secret_key_path = os.path.join(cls.testlayer_path, 'files', 'signing', "key.secret")
 
-        runCmd('gpg --batch --homedir %s --import %s %s' % (cls.gpg_dir, cls.pub_key_path, cls.secret_key_path))
+        cls.runCmd('gpg --batch --homedir %s --import %s %s' % (cls.gpg_dir, cls.pub_key_path, cls.secret_key_path))
 
     @OETestID(1362)
     def test_signing_packages(self):
@@ -43,7 +43,7 @@ class Signing(OESelftestTestCase):
         """
         import oe.packagedata
 
-        package_classes = get_bb_var('PACKAGE_CLASSES')
+        package_classes = self.get_bb_var('PACKAGE_CLASSES')
         if 'package_rpm' not in package_classes:
             self.skipTest('This test requires RPM Packaging.')
 
@@ -56,13 +56,13 @@ class Signing(OESelftestTestCase):
 
         self.write_config(feature)
 
-        bitbake('-c clean %s' % test_recipe)
-        bitbake('-f -c package_write_rpm %s' % test_recipe)
+        self.bitbake('-c clean %s' % test_recipe)
+        self.bitbake('-f -c package_write_rpm %s' % test_recipe)
 
         self.add_command_to_tearDown('bitbake -c clean %s' % test_recipe)
 
         needed_vars = ['PKGDATA_DIR', 'DEPLOY_DIR_RPM', 'PACKAGE_ARCH', 'STAGING_BINDIR_NATIVE']
-        bb_vars = get_bb_vars(needed_vars, test_recipe)
+        bb_vars = self.get_bb_vars(needed_vars, test_recipe)
         pkgdatadir = bb_vars['PKGDATA_DIR']
         pkgdata = oe.packagedata.read_pkgdatafile(pkgdatadir + "/runtime/ed")
         if 'PKGE' in pkgdata:
@@ -78,10 +78,10 @@ class Signing(OESelftestTestCase):
         # Use a temporary rpmdb
         rpmdb = tempfile.mkdtemp(prefix='oeqa-rpmdb')
 
-        runCmd('%s/rpmkeys --define "_dbpath %s" --import %s' %
+        self.runCmd('%s/rpmkeys --define "_dbpath %s" --import %s' %
                (staging_bindir_native, rpmdb, self.pub_key_path))
 
-        ret = runCmd('%s/rpmkeys --define "_dbpath %s" --checksig %s' %
+        ret = self.runCmd('%s/rpmkeys --define "_dbpath %s" --checksig %s' %
                      (staging_bindir_native, rpmdb, pkg_deploy))
         # tmp/deploy/rpm/i586/ed-1.9-r0.i586.rpm: rsa sha1 md5 OK
         self.assertIn('rsa sha1 (md5) pgp md5 OK', ret.output, 'Package signed incorrectly.')
@@ -89,8 +89,8 @@ class Signing(OESelftestTestCase):
 
         #Check that an image can be built from signed packages
         self.add_command_to_tearDown('bitbake -c clean core-image-minimal')
-        bitbake('-c clean core-image-minimal')
-        bitbake('core-image-minimal')
+        self.bitbake('-c clean core-image-minimal')
+        self.bitbake('core-image-minimal')
 
 
     @OETestID(1382)
@@ -121,8 +121,8 @@ class Signing(OESelftestTestCase):
 
         self.write_config(feature)
 
-        bitbake('-c clean %s' % test_recipe)
-        bitbake(test_recipe)
+        self.bitbake('-c clean %s' % test_recipe)
+        self.bitbake(test_recipe)
 
         recipe_sig = glob.glob(sstatedir + '/*/*:ed:*_package.tgz.sig')
         recipe_tgz = glob.glob(sstatedir + '/*/*:ed:*_package.tgz')
@@ -130,13 +130,15 @@ class Signing(OESelftestTestCase):
         self.assertEqual(len(recipe_sig), 1, 'Failed to find .sig file.')
         self.assertEqual(len(recipe_tgz), 1, 'Failed to find .tgz file.')
 
-        ret = runCmd('gpg --homedir %s --verify %s %s' % (self.gpg_dir, recipe_sig[0], recipe_tgz[0]))
+        ret = self.runCmd('gpg --homedir %s --verify %s %s' % (self.gpg_dir, recipe_sig[0], recipe_tgz[0]))
         # gpg: Signature made Thu 22 Oct 2015 01:45:09 PM EEST using RSA key ID 61EEFB30
         # gpg: Good signature from "testuser (nocomment) <testuser@email.com>"
         self.assertIn('gpg: Good signature from', ret.output, 'Package signed incorrectly.')
 
 
 class LockedSignatures(OESelftestTestCase):
+    _use_own_builddir = True
+    _main_thread = False
 
     @OETestID(1420)
     def test_locked_signatures(self):
@@ -153,19 +155,19 @@ class LockedSignatures(OESelftestTestCase):
 
         self.add_command_to_tearDown('rm -f %s' % os.path.join(self.builddir, locked_sigs_file))
 
-        bitbake(test_recipe)
+        self.bitbake(test_recipe)
         # Generate locked sigs include file
-        bitbake('-S none %s' % test_recipe)
+        self.bitbake('-S none %s' % test_recipe)
 
         feature = 'require %s\n' % locked_sigs_file
         feature += 'SIGGEN_LOCKEDSIGS_TASKSIG_CHECK = "warn"\n'
         self.write_config(feature)
 
         # Build a locked recipe
-        bitbake(test_recipe)
+        self.bitbake(test_recipe)
 
         # Make a change that should cause the locked task signature to change
-        recipe_append_file = test_recipe + '_' + get_bb_var('PV', test_recipe) + '.bbappend'
+        recipe_append_file = test_recipe + '_' + self.get_bb_var('PV', test_recipe) + '.bbappend'
         recipe_append_path = os.path.join(self.testlayer_path, 'recipes-test', test_recipe, recipe_append_file)
         feature = 'SUMMARY += "test locked signature"\n'
 
@@ -175,7 +177,7 @@ class LockedSignatures(OESelftestTestCase):
         self.add_command_to_tearDown('rm -rf %s' % os.path.join(self.testlayer_path, 'recipes-test', test_recipe))
 
         # Build the recipe again
-        ret = bitbake(test_recipe)
+        ret = self.bitbake(test_recipe)
 
         # Verify you get the warning and that the real task *isn't* run (i.e. the locked signature has worked)
         patt = r'WARNING: The %s:do_package sig is computed to be \S+, but the sig is locked to \S+ in SIGGEN_LOCKEDSIGS\S+' % test_recipe

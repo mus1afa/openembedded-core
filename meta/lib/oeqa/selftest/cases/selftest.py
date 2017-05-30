@@ -5,6 +5,8 @@ from oeqa.selftest.case import OESelftestTestCase
 from oeqa.core.decorator.oeid import OETestID
 
 class ExternalLayer(OESelftestTestCase):
+    _use_own_builddir = True
+    _main_thread = False
 
     @OETestID(1885)
     def test_list_imported(self):

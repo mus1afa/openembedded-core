@@ -4,22 +4,23 @@ import glob
 import subprocess
 
 from oeqa.selftest.case import OESelftestTestCase
-from oeqa.utils.commands import runCmd, bitbake, get_bb_var
 from oeqa.selftest.cases.sstate import SStateBase
 from oeqa.core.decorator.oeid import OETestID
 
 class SStateTests(SStateBase):
+    _use_own_builddir = True
+    _main_thread = False
 
     # Test sstate files creation and their location
     def run_test_sstate_creation(self, targets, distro_specific=True, distro_nonspecific=True, temp_sstate_location=True, should_pass=True):
         self.config_sstate(temp_sstate_location, [self.sstate_path])
 
         if  self.temp_sstate_location:
-            bitbake(['-cclean'] + targets)
+            self.bitbake(['-cclean'] + targets)
         else:
-            bitbake(['-ccleansstate'] + targets)
+            self.bitbake(['-ccleansstate'] + targets)
 
-        bitbake(targets)
+        self.bitbake(targets)
         file_tracker = []
         results = self.search_sstate('|'.join(map(str, targets)), distro_specific, distro_nonspecific)
         if distro_nonspecific:
@@ -55,16 +56,16 @@ class SStateTests(SStateBase):
     def run_test_cleansstate_task(self, targets, distro_specific=True, distro_nonspecific=True, temp_sstate_location=True):
         self.config_sstate(temp_sstate_location, [self.sstate_path])
 
-        bitbake(['-ccleansstate'] + targets)
+        self.bitbake(['-ccleansstate'] + targets)
 
-        bitbake(targets)
+        self.bitbake(targets)
         tgz_created = self.search_sstate('|'.join(map(str, [s + '.*?\.tgz$' for s in targets])), distro_specific, distro_nonspecific)
         self.assertTrue(tgz_created, msg="Could not find sstate .tgz files for: %s (%s)" % (', '.join(map(str, targets)), str(tgz_created)))
 
         siginfo_created = self.search_sstate('|'.join(map(str, [s + '.*?\.siginfo$' for s in targets])), distro_specific, distro_nonspecific)
         self.assertTrue(siginfo_created, msg="Could not find sstate .siginfo files for: %s (%s)" % (', '.join(map(str, targets)), str(siginfo_created)))
 
-        bitbake(['-ccleansstate'] + targets)
+        self.bitbake(['-ccleansstate'] + targets)
         tgz_removed = self.search_sstate('|'.join(map(str, [s + '.*?\.tgz$' for s in targets])), distro_specific, distro_nonspecific)
         self.assertTrue(not tgz_removed, msg="do_cleansstate didn't remove .tgz sstate files for: %s (%s)" % (', '.join(map(str, targets)), str(tgz_removed)))
 
@@ -89,9 +90,9 @@ class SStateTests(SStateBase):
     def run_test_rebuild_distro_specific_sstate(self, targets, temp_sstate_location=True):
         self.config_sstate(temp_sstate_location, [self.sstate_path])
 
-        bitbake(['-ccleansstate'] + targets)
+        self.bitbake(['-ccleansstate'] + targets)
 
-        bitbake(targets)
+        self.bitbake(targets)
         results = self.search_sstate('|'.join(map(str, [s + '.*?\.tgz$' for s in targets])), distro_specific=False, distro_nonspecific=True)
         filtered_results = []
         for r in results:
@@ -106,8 +107,8 @@ class SStateTests(SStateBase):
         shutil.copytree(self.distro_specific_sstate, self.distro_specific_sstate + "_old")
         shutil.rmtree(self.distro_specific_sstate)
 
-        bitbake(['-cclean'] + targets)
-        bitbake(targets)
+        self.bitbake(['-cclean'] + targets)
+        self.bitbake(targets)
         file_tracker_2 = self.search_sstate('|'.join(map(str, [s + '.*?\.tgz$' for s in targets])), distro_specific=True, distro_nonspecific=False)
         self.assertTrue(len(file_tracker_2) >= len(targets), msg = "Not all sstate files ware created for: %s" % ', '.join(map(str, targets)))
 
@@ -150,13 +151,13 @@ class SStateTests(SStateBase):
         for idx in range(len(target_config)):
             self.append_config(global_config[idx])
             self.append_recipeinc(target, target_config[idx])
-            sstate_arch = get_bb_var('SSTATE_PKGARCH', target)
+            sstate_arch = self.get_bb_var('SSTATE_PKGARCH', target)
             if not sstate_arch in sstate_archs_list:
                 sstate_archs_list.append(sstate_arch)
             if target_config[idx] == target_config[-1]:
                 target_sstate_before_build = self.search_sstate(target + '.*?\.tgz$')
-            bitbake("-cclean %s" % target)
-            result = bitbake(target, ignore_status=True)
+            self.bitbake("-cclean %s" % target)
+            result = self.bitbake(target, ignore_status=True)
             if target_config[idx] == target_config[-1]:
                 target_sstate_after_build = self.search_sstate(target + '.*?\.tgz$')
                 expected_remaining_sstate += [x for x in target_sstate_after_build if x not in target_sstate_before_build if not any(pattern in x for pattern in ignore_patterns)]
@@ -164,7 +165,7 @@ class SStateTests(SStateBase):
             self.remove_recipeinc(target, target_config[idx])
             self.assertEqual(result.status, 0, msg = "build of %s failed with %s" % (target, result.output))
 
-        runCmd("sstate-cache-management.sh -y --cache-dir=%s --remove-duplicated --extra-archs=%s" % (self.sstate_path, ','.join(map(str, sstate_archs_list))))
+        self.runCmd("sstate-cache-management.sh -y --cache-dir=%s --remove-duplicated --extra-archs=%s" % (self.sstate_path, ','.join(map(str, sstate_archs_list))))
         actual_remaining_sstate = [x for x in self.search_sstate(target + '.*?\.tgz$') if not any(pattern in x for pattern in ignore_patterns)]
 
         actual_not_expected = [x for x in actual_remaining_sstate if x not in expected_remaining_sstate]
@@ -230,7 +231,7 @@ SDKMACHINE = "x86_64"
 PACKAGE_CLASSES = "package_rpm package_ipk package_deb"
 """)
         self.track_for_cleanup(self.topdir + "/tmp-sstatesamehash")
-        bitbake("core-image-sato -S none")
+        self.bitbake("core-image-sato -S none")
         self.write_config("""
 MACHINE = "qemux86"
 TMPDIR = "${TOPDIR}/tmp-sstatesamehash2"
@@ -240,7 +241,7 @@ SDKMACHINE = "i686"
 PACKAGE_CLASSES = "package_rpm package_ipk package_deb"
 """)
         self.track_for_cleanup(self.topdir + "/tmp-sstatesamehash2")
-        bitbake("core-image-sato -S none")
+        self.bitbake("core-image-sato -S none")
 
         def get_files(d):
             f = []
@@ -272,13 +273,13 @@ TMPDIR = \"${TOPDIR}/tmp-sstatesamehash\"
 NATIVELSBSTRING = \"DistroA\"
 """)
         self.track_for_cleanup(self.topdir + "/tmp-sstatesamehash")
-        bitbake("core-image-sato -S none")
+        self.bitbake("core-image-sato -S none")
         self.write_config("""
 TMPDIR = \"${TOPDIR}/tmp-sstatesamehash2\"
 NATIVELSBSTRING = \"DistroB\"
 """)
         self.track_for_cleanup(self.topdir + "/tmp-sstatesamehash2")
-        bitbake("core-image-sato -S none")
+        self.bitbake("core-image-sato -S none")
 
         def get_files(d):
             f = []
@@ -338,10 +339,10 @@ MULTILIBS = \"\"
 
         self.write_config(configA)
         self.track_for_cleanup(self.topdir + "/tmp-sstatesamehash")
-        bitbake("world meta-toolchain -S none")
+        self.bitbake("world meta-toolchain -S none")
         self.write_config(configB)
         self.track_for_cleanup(self.topdir + "/tmp-sstatesamehash2")
-        bitbake("world meta-toolchain -S none")
+        self.bitbake("world meta-toolchain -S none")
 
         def get_files(d):
             f = {}
@@ -382,7 +383,7 @@ MULTILIBS = "multilib:lib32"
 DEFAULTTUNE_virtclass-multilib-lib32 = "x86"
 """)
         self.track_for_cleanup(self.topdir + "/tmp-sstatesamehash")
-        bitbake("world meta-toolchain -S none")
+        self.bitbake("world meta-toolchain -S none")
         self.write_config("""
 TMPDIR = \"${TOPDIR}/tmp-sstatesamehash2\"
 MACHINE = \"qemux86copy\"
@@ -391,7 +392,7 @@ MULTILIBS = "multilib:lib32"
 DEFAULTTUNE_virtclass-multilib-lib32 = "x86"
 """)
         self.track_for_cleanup(self.topdir + "/tmp-sstatesamehash2")
-        bitbake("world meta-toolchain -S none")
+        self.bitbake("world meta-toolchain -S none")
 
         def get_files(d):
             f = []
@@ -430,7 +431,7 @@ http_proxy = ""
 """)
         self.track_for_cleanup(self.topdir + "/tmp-sstatesamehash")
         self.track_for_cleanup(self.topdir + "/download1")
-        bitbake("world meta-toolchain -S none")
+        self.bitbake("world meta-toolchain -S none")
         self.write_config("""
 TMPDIR = "${TOPDIR}/tmp-sstatesamehash2"
 BB_NUMBER_THREADS = "${@oe.utils.cpu_count()+1}"
@@ -445,7 +446,7 @@ http_proxy = "http://example.com/"
 """)
         self.track_for_cleanup(self.topdir + "/tmp-sstatesamehash2")
         self.track_for_cleanup(self.topdir + "/download2")
-        bitbake("world meta-toolchain -S none")
+        self.bitbake("world meta-toolchain -S none")
 
         def get_files(d):
             f = {}

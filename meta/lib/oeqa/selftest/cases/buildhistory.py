@@ -3,13 +3,10 @@ import re
 import datetime
 
 from oeqa.selftest.case import OESelftestTestCase
-from oeqa.utils.commands import bitbake, get_bb_vars
-
 
 class BuildhistoryBase(OESelftestTestCase):
-
     def config_buildhistory(self, tmp_bh_location=False):
-        bb_vars = get_bb_vars(['USER_CLASSES', 'INHERIT'])
+        bb_vars = self.get_bb_vars(['USER_CLASSES', 'INHERIT'])
         if (not 'buildhistory' in bb_vars['USER_CLASSES']) and (not 'buildhistory' in bb_vars['INHERIT']):
             add_buildhistory_config = 'INHERIT += "buildhistory"\nBUILDHISTORY_COMMIT = "1"'
             self.append_config(add_buildhistory_config)
@@ -30,8 +27,8 @@ class BuildhistoryBase(OESelftestTestCase):
 
         self.append_config(global_config)
         self.append_recipeinc(target, target_config)
-        bitbake("-cclean %s" % target)
-        result = bitbake(target, ignore_status=True)
+        self.bitbake("-cclean %s" % target)
+        result = self.bitbake(target, ignore_status=True)
         self.remove_config(global_config)
         self.remove_recipeinc(target, target_config)
 
