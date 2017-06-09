@@ -7,6 +7,7 @@ import shutil
 import glob
 import errno
 import re
+import subprocess
 from unittest.util import safe_repr
 
 import oeqa.utils.ftools as ftools
@@ -24,6 +25,8 @@ class OESelftestTestCase(OETestCase):
 
     @classmethod
     def _setUpBuildDir(cls):
+        cls.orig_testlayer_path = cls.tc.config_paths['testlayer_path']
+
         if cls._use_own_builddir:
             cls.builddir = os.path.join(cls.tc.config_paths['base_builddir'],
                     cls.__module__, cls.__name__)
@@ -35,13 +38,22 @@ class OESelftestTestCase(OETestCase):
                     "conf/bblayers.conf")
             cls.local_bblayers_backup = os.path.join(cls.builddir,
                     "conf/bblayers.conf.bk")
+
+            cls.base_testlayer_path = os.path.join(cls.builddir,
+                    'layers')
+            cls.testlayer_path = os.path.join(cls.base_testlayer_path,
+                    os.path.basename(cls.orig_testlayer_path))
         else:
             cls.builddir = cls.tc.config_paths['builddir']
+
             cls.localconf_path = cls.tc.config_paths['localconf']
             cls.localconf_backup = cls.tc.config_paths['localconf_class_backup']
             cls.local_bblayers_path = cls.tc.config_paths['bblayers']
             cls.local_bblayers_backup = \
                     cls.tc.config_paths['bblayers_class_backup']
+
+            cls.base_testlayer_path = os.path.dirname(cls.orig_testlayer_path)
+            cls.testlayer_path = cls.orig_testlayer_path
 
         cls.testinc_path = os.path.join(cls.builddir, "conf/selftest.inc")
         cls.testinc_bblayers_path = os.path.join(cls.builddir,
@@ -79,11 +91,24 @@ class OESelftestTestCase(OETestCase):
                 ftools.append_file(cls.localconf_path, "PARALLEL_MAKE?=\"-j %d\"" %
                         cls.tc.loader.process_num)
 
+            # copy meta-selftest per class to avoid races when changing meta-data
+            # and init git repository because some tests review the repo status
+            os.makedirs(cls.base_testlayer_path)
+            shutil.copytree(cls.orig_testlayer_path, cls.testlayer_path)
+            cls.runCmd("git init; git add *; git commit -a -m 'initial'",
+                            cwd=cls.testlayer_path)
+
+            # XXX: sometimes meta-selftest isn't on bblayers at first backup
+            try:
+                cls.runCmd("bitbake-layers remove-layer %s" % cls.orig_testlayer_path)
+            except:
+                pass
+            cls.runCmd("bitbake-layers add-layer %s" % cls.testlayer_path)
+
     @classmethod
     def setUpClass(cls):
         super(OESelftestTestCase, cls).setUpClass()
 
-        cls.testlayer_path = cls.tc.config_paths['testlayer_path']
         cls._setUpBuildDir()
 
         cls._track_for_cleanup = [
