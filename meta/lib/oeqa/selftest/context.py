@@ -11,11 +11,12 @@ from shutil import copyfile
 import tempfile
 from random import choice
 
+from argparse_oe import int_positive
+
 import oeqa
-
-from oeqa.core.context import OETestContext, OETestContextExecutor
+from oeqa.core.context import OETestContext, OETestContextExecutor 
 from oeqa.core.exception import OEQAPreRun
-
+from oeqa.core.threaded import OETestContextThreaded
 from oeqa.utils.commands import runCmd, get_bb_vars, get_test_layer
 
 class OESelftestTestContext(OETestContext):
@@ -38,13 +39,18 @@ class OESelftestTestContext(OETestContext):
     def listTests(self, display_type, machine=None):
         return super(OESelftestTestContext, self).listTests(display_type)
 
+class OESelftestTestContextThreaded(OESelftestTestContext, OETestContextThreaded):
+    pass
+
 class OESelftestTestContextExecutor(OETestContextExecutor):
-    _context_class = OESelftestTestContext
+    _context_class = OESelftestTestContextThreaded
     _script_executor = 'oe-selftest'
 
     name = 'oe-selftest'
     help = 'oe-selftest test component'
     description = 'Executes selftest tests'
+
+    DEFAULT_THREADS = 1
 
     def register_commands(self, logger, parser):
         group = parser.add_mutually_exclusive_group(required=True)
@@ -65,6 +71,11 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
         group.add_argument('-l', '--list-tests', required=False,
                 action="store_true", default=False,
                 help='List all available tests.')
+
+        parser.add_argument('-t', '--thread-num', required=False, action='store',
+                dest="thread_num", default=self.DEFAULT_THREADS, type=int_positive,
+                help='Number of threads to use for execute selftests,'\
+                       ' default: %d' % self.DEFAULT_THREADS)
 
         parser.add_argument('--machine', required=False, choices=['random', 'all'],
                             help='Run tests on different machines (random/all).')
@@ -137,6 +148,11 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
         self.tc_kwargs['init']['config_paths']['base_builddir'] = \
                 tempfile.mkdtemp(prefix='build-selftest-', dir=builddir)
 
+        self.tc_kwargs['load']['process_num'] = args.thread_num
+        if 'OE_SELFTEST_THREAD_NUM' in os.environ:
+            self.tc_kwargs['load']['process_num'] = \
+                    int(os.environ['OE_SELFTEST_THREAD_NUM'])
+
     def _pre_run(self):
         def _check_required_env_variables(vars):
             for var in vars:
@@ -198,6 +214,11 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
     def _internal_run(self, logger, args):
         self.module_paths = self._get_cases_paths(
                 self.tc_kwargs['init']['td']['BBPATH'].split(':'))
+
+        if self.tc_kwargs['load']['process_num'] == 1:
+            self._context_class = OESelftestTestContext
+            # OESelftestTestContext class doesn't expect process_num
+            del self.tc_kwargs['load']['process_num']
 
         self.tc = self._context_class(**self.tc_kwargs['init'])
         self.tc.loadTests(self.module_paths, **self.tc_kwargs['load'])
