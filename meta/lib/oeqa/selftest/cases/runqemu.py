@@ -6,12 +6,11 @@ import re
 import logging
 
 from oeqa.selftest.case import OESelftestTestCase
-from oeqa.utils.commands import bitbake, runqemu, get_bb_var
+from oeqa.utils.commands import runqemu
 from oeqa.core.decorator.oeid import OETestID
 
 class RunqemuTests(OESelftestTestCase):
     """Runqemu test class"""
-
     image_is_ready = False
     deploy_dir_image = ''
 
@@ -37,8 +36,8 @@ SYSLINUX_TIMEOUT = "10"
         )
 
         if not RunqemuTests.image_is_ready:
-            RunqemuTests.deploy_dir_image = get_bb_var('DEPLOY_DIR_IMAGE')
-            bitbake(self.recipe)
+            RunqemuTests.deploy_dir_image = self.get_bb_var('DEPLOY_DIR_IMAGE')
+            self.bitbake(self.recipe)
             RunqemuTests.image_is_ready = True
 
     @OETestID(2001)
