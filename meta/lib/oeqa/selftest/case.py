@@ -225,13 +225,18 @@ to ensure accurate results.")
 
     def tearDown(self):
         if self._extra_tear_down_commands:
-            failed_extra_commands = []
+            failed_extra_commands = {}
             for command in self._extra_tear_down_commands:
                 result = self.runCmd(command, ignore_status=True)
-                if not result.status ==  0:
-                    failed_extra_commands.append(command)
+                if not result.status == 0:
+                    failed_extra_commands[command] = result
             if failed_extra_commands:
-                self.logger.warning("tearDown commands have failed: %s" % ', '.join(map(str, failed_extra_commands)))
+                self.logger.warning("%s: tearDown commands have failed" % \
+                        self.id())
+                for cmd in failed_extra_commands:
+                    result = failed_extra_commands[cmd]
+                    self.logger.warning("%s: %s\n%s" % (self.id(), cmd,
+                        result.output))
                 self.logger.debug("Trying to move on.")
             self._extra_tear_down_commands = []
 
