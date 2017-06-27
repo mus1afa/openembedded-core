@@ -88,25 +88,28 @@ class TestLoader(TestBase):
         self.cases_path = [os.path.join(self.cases_path, 'loader', 'threaded')]
 
         tc = self._testLoaderThreaded()
-        self.assertEqual(len(tc.suites), 3, "Expected to be 3 suites")
+        self.assertTrue(len(tc.suites['main']._tests),
+                "Expected to have tests in main suite")
+        self.assertEqual(len(tc.suites['pool']), 2,
+                "Expected to be 2 suites in pool")
 
         case_ids = ['threaded.ThreadedTest.test_threaded_no_depends',
                 'threaded.ThreadedTest2.test_threaded_same_module',
                 'threaded_depends.ThreadedTest3.test_threaded_depends']
-        for case in tc.suites[0]._tests:
+        for case in tc.suites['main']._tests:
             self.assertEqual(case.id(),
-                    case_ids[tc.suites[0]._tests.index(case)])
+                    case_ids[tc.suites['main']._tests.index(case)])
 
         case_ids = ['threaded_alone.ThreadedTestAlone.test_threaded_alone']
-        for case in tc.suites[1]._tests:
+        for case in tc.suites['pool'][0]._tests:
             self.assertEqual(case.id(),
-                    case_ids[tc.suites[1]._tests.index(case)])
+                    case_ids[tc.suites['pool'][0]._tests.index(case)])
 
         case_ids = ['threaded_module.ThreadedTestModule.test_threaded_module',
                 'threaded_module.ThreadedTestModule2.test_threaded_module2']
-        for case in tc.suites[2]._tests:
+        for case in tc.suites['pool'][1]._tests:
             self.assertEqual(case.id(),
-                    case_ids[tc.suites[2]._tests.index(case)])
+                    case_ids[tc.suites['pool'][1]._tests.index(case)])
 
         self.cases_path = cases_path
 
