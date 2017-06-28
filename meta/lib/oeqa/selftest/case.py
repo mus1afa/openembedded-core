@@ -98,6 +98,12 @@ class OESelftestTestCase(OETestCase):
             cls.runCmd("git init; git add *; git commit -a -m 'initial'",
                             cwd=cls.testlayer_path)
 
+            if cls._use_own_builddir and 'BBSERVER' in os.environ:
+                env = os.environ.copy()
+                del env['BBSERVER']
+                result = cls.runCmd('bitbake --server-only -t xmlrpc -B localhost:-1',
+                        env=env)
+
             # XXX: sometimes meta-selftest isn't on bblayers at first backup
             try:
                 cls.runCmd("bitbake-layers remove-layer %s" % cls.orig_testlayer_path)
@@ -120,6 +126,9 @@ class OESelftestTestCase(OETestCase):
 
     @classmethod
     def tearDownClass(cls):
+        if cls._use_own_builddir and 'BBSERVER' in os.environ:
+            cls.runCmd('bitbake --kill-server')
+
         cls.remove_include()
         cls.remove_inc_files()
         super(OESelftestTestCase, cls).tearDownClass()
