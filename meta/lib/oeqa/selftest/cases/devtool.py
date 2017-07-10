@@ -248,6 +248,8 @@ class DevtoolTests(DevtoolCommon):
         # Test devtool add
         self.track_for_cleanup(self.workspacedir)
         self.add_command_to_tearDown('bitbake-layers remove-layer %s' % self.workspacedir)
+        # dbus needs to be built because is a dependency of dbus-wait
+        self.bitbake('dbus')
         # Don't specify a name since we should be able to auto-detect it
         result = self.runCmd('devtool add %s' % srcdir)
         self.assertExists(os.path.join(self.workspacedir, 'conf', 'layer.conf'), 'Workspace directory not created')
