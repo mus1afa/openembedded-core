@@ -234,6 +234,14 @@ class OETestResultThreaded(object):
                     self._results[tid]['result'].wasSuccessful()
         return wasSuccessful
 
+    def getSkippedTests(self):
+        skipped = 0
+
+        for tid in self._results.keys():
+            skipped = skipped + len(self.tc._results[tid]['skipped'])
+
+        return skipped
+
     def stop(self):
         for tid in self._results.keys():
             self._results[tid]['result'].stop()
@@ -248,6 +256,9 @@ class OETestResultThreaded(object):
             msg = "%s - OK - All required tests passed" % component
         else:
             msg = "%s - FAIL - Required tests failed" % component
+        skipped = self.getSkippedTests()
+        if skipped:
+            msg += " (skipped=%d)" % skipped
         self.tc.logger.info(msg)
 
     def logDetails(self):
