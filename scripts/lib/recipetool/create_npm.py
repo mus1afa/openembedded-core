@@ -21,7 +21,8 @@ import subprocess
 import tempfile
 import shutil
 import json
-from recipetool.create import RecipeHandler, split_pkg_licenses, handle_license_vars, check_npm
+from recipetool.create import RecipeHandler, split_pkg_licenses, handle_license_vars
+from recipetool.utils import ensure_npm
 
 logger = logging.getLogger('recipetool')
 
@@ -189,7 +190,9 @@ class NpmRecipeHandler(RecipeHandler):
         files = RecipeHandler.checkfiles(srctree, ['package.json'])
         if files:
             d = bb.data.createCopy(tinfoil.config_data)
-            npm_bindir = check_npm(tinfoil, self._devtool)
+            npm_bindir = ensure_npm(tinfoil)
+            if not npm_bindir:
+                sys.exit(14)
             d.prependVar('PATH', '%s:' % npm_bindir)
 
             data = read_package_json(files[0])

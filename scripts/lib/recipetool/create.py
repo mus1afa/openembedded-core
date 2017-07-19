@@ -25,6 +25,7 @@ import json
 import logging
 import scriptutils
 from urllib.parse import urlparse, urldefrag, urlsplit
+from recipetool.utils import ensure_npm
 import hashlib
 import bb.fetch2
 logger = logging.getLogger('recipetool')
@@ -444,7 +445,9 @@ def create_recipe(args):
         d = bb.data.createCopy(tinfoil.config_data)
         if fetchuri.startswith('npm://'):
             # Check if npm is available
-            npm_bindir = check_npm(tinfoil, args.devtool)
+            npm_bindir = ensure_npm(tinfoil)
+            if not npm_bindir:
+                sys.exit(14)
             d.prependVar('PATH', '%s:' % npm_bindir)
         logger.info('Fetching %s...' % srcuri)
         try:
@@ -1147,22 +1150,6 @@ def convert_rpm_xml(xmlfile):
     return values
 
 
-def check_npm(tinfoil, debugonly=False):
-    try:
-        rd = tinfoil.parse_recipe('nodejs-native')
-    except bb.providers.NoProvider:
-        # We still conditionally show the message and exit with the special
-        # return code, otherwise we can't show the proper message for eSDK
-        # users
-        log_error_cond('nodejs-native is required for npm but is not available - you will likely need to add a layer that provides nodejs', debugonly)
-        sys.exit(14)
-    bindir = rd.getVar('STAGING_BINDIR_NATIVE')
-    npmpath = os.path.join(bindir, 'npm')
-    if not os.path.exists(npmpath):
-        log_error_cond('npm required to process specified source, but npm is not available - you need to run bitbake -c addto_recipe_sysroot nodejs-native first', debugonly)
-        sys.exit(14)
-    return bindir
-
 def register_commands(subparsers):
     parser_create = subparsers.add_parser('create',
                                           help='Create a new recipe',
@@ -1180,8 +1167,5 @@ def register_commands(subparsers):
     parser_create.add_argument('--keep-temp', action="store_true", help='Keep temporary directory (for debugging)')
     parser_create.add_argument('--fetch-dev', action="store_true", help='For npm, also fetch devDependencies')
     parser_create.add_argument('--devtool', action="store_true", help=argparse.SUPPRESS)
-    # FIXME I really hate having to set parserecipes for this, but given we may need
-    # to call into npm (and we don't know in advance if we will or not) and in order
-    # to do so we need to know npm's recipe sysroot path, there's not much alternative
-    parser_create.set_defaults(func=create_recipe, parserecipes=True)
+    parser_create.set_defaults(func=create_recipe)
 
